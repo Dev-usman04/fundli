@@ -41,6 +41,7 @@ const chatRoutes = require('./routes/chat');
 const repaymentNotificationRoutes = require('./routes/repaymentNotifications');
 const penaltyConfigRoutes = require('./routes/penaltyConfig');
 const kycVerificationRoutes = require('./routes/kycVerification');
+const adminKycRoutes = require('./routes/admin');
 
 const { errorHandler } = require('./middleware/errorHandler');
 const { connectDB } = require('./config/database');
@@ -142,6 +143,7 @@ app.use('/api/referrals', referralRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/penalty-config', penaltyConfigRoutes);
 app.use('/api/kyc', kycVerificationRoutes);
+app.use('/api/admin', adminKycRoutes);
 app.use('/api/collateral', manualCollateralRoutes);
 app.use('/api/borrower', borrowerRoutes);
 app.use('/api/lender', lenderRoutes);

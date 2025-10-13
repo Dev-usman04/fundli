@@ -25,7 +25,11 @@ class ChatSocketService {
         auth: {
           token: token
         },
-        transports: ['websocket', 'polling']
+        transports: ['websocket', 'polling'],
+        autoConnect: true,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000
       });
 
       // Set up event listeners
@@ -47,30 +51,60 @@ class ChatSocketService {
       
       // Join user to their personal room
       this.socket.emit('join', { token: this.currentToken });
+      
+      // Notify that connection is ready
+      if (this.callbacks.onConnectionReady) {
+        this.callbacks.onConnectionReady();
+      }
     });
 
     this.socket.on('disconnect', () => {
       console.log('🔌 Chat Socket.IO disconnected');
       this.isConnected = false;
+      
+      // Notify that connection is lost
+      if (this.callbacks.onConnectionLost) {
+        this.callbacks.onConnectionLost();
+      }
     });
 
     this.socket.on('connect_error', (error) => {
       console.error('❌ Chat Socket.IO connection error:', error);
       this.isConnected = false;
+      
+      // Notify that connection failed
+      if (this.callbacks.onConnectionError) {
+        this.callbacks.onConnectionError(error);
+      }
     });
 
     // Authentication events
     this.socket.on('joined', (data) => {
       console.log('✅ Joined chat room:', data);
+      
+      // Notify that user has joined
+      if (this.callbacks.onJoined) {
+        this.callbacks.onJoined(data);
+      }
     });
 
     this.socket.on('error', (error) => {
       console.error('❌ Chat Socket.IO error:', error);
+      
+      // Notify that an error occurred
+      if (this.callbacks.onError) {
+        this.callbacks.onError(error);
+      }
     });
 
     // Chat room events
     this.socket.on('chat_joined', (data) => {
       console.log('✅ Joined chat room:', data.chatId);
+      
+      // Notify that user joined a specific chat
+      if (this.callbacks.onChatJoined) {
+        this.callbacks.onChatJoined(data);
+      }
     });
 
     // Message events
@@ -107,22 +141,24 @@ class ChatSocketService {
   joinChat(chatId) {
     if (!this.socket || !this.isConnected) {
       console.error('❌ Socket not connected, cannot join chat');
-      return;
+      return false;
     }
 
     this.socket.emit('join_chat', { chatId: chatId });
     console.log('💬 Joining chat room:', chatId);
+    return true;
   }
 
   // Leave a specific chat room
   leaveChat(chatId) {
     if (!this.socket || !this.isConnected) {
       console.error('❌ Socket not connected, cannot leave chat');
-      return;
+      return false;
     }
 
     this.socket.emit('leave_chat', { chatId: chatId });
     console.log('👋 Leaving chat room:', chatId);
+    return true;
   }
 
   // Send a message (this is mainly for testing, actual messages are sent via API)
@@ -172,8 +208,31 @@ class ChatSocketService {
   getConnectionStatus() {
     return {
       isConnected: this.isConnected,
-      socketId: this.socket?.id || null
+      socketId: this.socket?.id || null,
+      userId: this.currentUserId
     };
+  }
+
+  // Wait for connection to be ready
+  waitForConnection(timeout = 5000) {
+    return new Promise((resolve, reject) => {
+      if (this.isConnected) {
+        resolve(true);
+        return;
+      }
+
+      const timeoutId = setTimeout(() => {
+        reject(new Error('Connection timeout'));
+      }, timeout);
+
+      const onConnect = () => {
+        clearTimeout(timeoutId);
+        this.socket.off('connect', onConnect);
+        resolve(true);
+      };
+
+      this.socket.on('connect', onConnect);
+    });
   }
 }
 

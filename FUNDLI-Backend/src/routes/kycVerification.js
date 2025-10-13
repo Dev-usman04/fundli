@@ -5,6 +5,8 @@ const fs = require('fs').promises;
 const { protect } = require('../middleware/auth');
 const User = require('../models/User');
 const { faceComparisonService } = require('../services/faceComparisonService');
+const { bvnVerificationService } = require('../services/bvnVerificationService');
+const { bankVerificationService } = require('../services/bankVerificationService');
 
 const router = express.Router();
 
@@ -192,7 +194,7 @@ router.post('/verify-faces', protect, async (req, res) => {
     user.kycVerificationDetails.livenessCheckPassed = comparisonResult.livenessCheckPassed;
 
     // Determine verification status based on score
-    if (comparisonResult.similarityScore >= 85 && comparisonResult.livenessCheckPassed) {
+    if (comparisonResult.similarityScore >= 70 && comparisonResult.livenessCheckPassed) {
       user.kycStatus = 'verified';
       user.kycVerified = true;
     } else {
@@ -323,6 +325,237 @@ router.post('/reset', protect, async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: 'Failed to reset KYC verification',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Complete KYC verification with BVN and bank account
+// @route   POST /api/kyc/complete-verification
+// @access  Private
+router.post('/complete-verification', protect, async (req, res) => {
+  try {
+    const { bvn, bankAccount } = req.body;
+
+    // Validate required fields
+    if (!bvn || !bankAccount) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'BVN and bank account details are required'
+      });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
+    }
+
+    console.log('🔍 Starting complete KYC verification for user:', user.email);
+
+    // Step 1: Verify BVN
+    console.log('📋 Step 1: Verifying BVN...');
+    const bvnResult = await bvnVerificationService.verifyBVN(bvn, {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phoneNumber: user.phone
+    });
+
+    if (!bvnResult.verified) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'BVN verification failed',
+        details: bvnResult
+      });
+    }
+
+    // Step 2: Verify bank account
+    console.log('🏦 Step 2: Verifying bank account...');
+    const bankResult = await bankVerificationService.verifyAccount(
+      bankAccount.accountNumber,
+      bankAccount.bankCode,
+      bankAccount.accountName
+    );
+
+    if (!bankResult.verified) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Bank account verification failed',
+        details: bankResult
+      });
+    }
+
+    // Step 3: Update user KYC data
+    console.log('💾 Step 3: Updating user KYC data...');
+    user.kycData.bvn = {
+      number: bvn,
+      verified: true,
+      verificationResult: bvnResult,
+      verifiedAt: new Date()
+    };
+
+    user.kycData.bankAccount = {
+      accountNumber: bankAccount.accountNumber,
+      bankCode: bankAccount.bankCode,
+      bankName: bankResult.accountResult.bankName,
+      accountName: bankAccount.accountName,
+      verified: true,
+      verificationResult: bankResult,
+      verifiedAt: new Date()
+    };
+
+    user.kycData.submittedAt = new Date();
+
+    // Step 4: Check if all KYC requirements are met
+    const hasDocumentUpload = user.documentImage && user.liveFaceImage;
+    const hasFaceVerification = user.verificationScore >= 70 && user.kycVerificationDetails.livenessCheckPassed;
+    const hasBVNVerification = bvnResult.verified;
+    const hasBankVerification = bankResult.verified;
+
+    if (hasDocumentUpload && hasFaceVerification && hasBVNVerification && hasBankVerification) {
+      user.kycStatus = 'verified';
+      user.kycVerified = true;
+      user.kycData.reviewedAt = new Date();
+      
+      console.log('✅ KYC verification completed successfully');
+    } else {
+      user.kycStatus = 'pending';
+      console.log('⏳ KYC verification pending - missing requirements');
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'KYC verification completed successfully',
+      data: {
+        kycStatus: user.kycStatus,
+        kycVerified: user.kycVerified,
+        verificationResults: {
+          bvn: bvnResult,
+          bankAccount: bankResult,
+          faceVerification: {
+            score: user.verificationScore,
+            livenessPassed: user.kycVerificationDetails.livenessCheckPassed
+          }
+        },
+        requirements: {
+          documentUpload: hasDocumentUpload,
+          faceVerification: hasFaceVerification,
+          bvnVerification: hasBVNVerification,
+          bankVerification: hasBankVerification
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Complete KYC verification error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to complete KYC verification',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get list of supported banks
+// @route   GET /api/kyc/banks
+// @access  Private
+router.get('/banks', protect, async (req, res) => {
+  try {
+    const banks = await bankVerificationService.getBanks();
+    
+    res.status(200).json({
+      status: 'success',
+      data: banks
+    });
+  } catch (error) {
+    console.error('❌ Error fetching banks:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch banks list',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Verify BVN only
+// @route   POST /api/kyc/verify-bvn
+// @access  Private
+router.post('/verify-bvn', protect, async (req, res) => {
+  try {
+    const { bvn } = req.body;
+
+    if (!bvn) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'BVN is required'
+      });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
+    }
+
+    const bvnResult = await bvnVerificationService.verifyBVN(bvn, {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phoneNumber: user.phone
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'BVN verification completed',
+      data: bvnResult
+    });
+
+  } catch (error) {
+    console.error('❌ BVN verification error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'BVN verification failed',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Verify bank account only
+// @route   POST /api/kyc/verify-bank-account
+// @access  Private
+router.post('/verify-bank-account', protect, async (req, res) => {
+  try {
+    const { accountNumber, bankCode, accountName } = req.body;
+
+    if (!accountNumber || !bankCode || !accountName) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Account number, bank code, and account name are required'
+      });
+    }
+
+    const bankResult = await bankVerificationService.verifyAccount(
+      accountNumber,
+      bankCode,
+      accountName
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Bank account verification completed',
+      data: bankResult
+    });
+
+  } catch (error) {
+    console.error('❌ Bank account verification error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Bank account verification failed',
       error: error.message
     });
   }

@@ -269,11 +269,21 @@ router.post('/chats/pool/:poolId', protect, async (req, res) => {
         if (chat) {
           console.log(`✅ Found chat for pool ${poolId} in general search`);
         } else {
-          console.log(`❌ No chat found for pool ${poolId}`);
-          return res.status(404).json({
-            status: 'error',
-            message: 'No active chats found for this pool'
+          console.log(`❌ No chat found for pool ${poolId} - creating new chat`);
+          // Create a new chat for this pool if none exists
+          // This handles the case where a lender wants to start a conversation
+          chat = await Chat.create({
+            participants: [userId, pool.creator._id],
+            pool: poolId,
+            chatType: 'pool_discussion',
+            unreadCounts: [
+              { user: userId, count: 0 },
+              { user: pool.creator._id, count: 0 }
+            ]
           });
+          
+          await chat.populate('participants', 'firstName lastName email userType');
+          console.log(`✅ Created new chat for pool ${poolId}`);
         }
       }
     }
@@ -450,14 +460,23 @@ router.post('/chats/:chatId/messages', protect, async (req, res) => {
         };
         
         console.log(`📢 Broadcasting message data:`, messageData);
+        
+        // Broadcast to the specific chat room
         io.to(`chat_${chatId}`).emit('new_message', messageData);
         console.log(`📢 Message broadcasted via Socket.IO to chat ${chatId}`);
         
-        // Also broadcast to all connected sockets for debugging
+        // Also broadcast to individual user rooms to ensure delivery
+        for (const participant of otherParticipants) {
+          io.to(`user_${participant._id}`).emit('new_message', messageData);
+          console.log(`📢 Message also sent to user room: user_${participant._id}`);
+        }
+        
+        // Debug broadcast to all connected sockets
         io.emit('debug_message', {
           chatId: chatId,
           sender: req.user.firstName,
-          content: message.content.substring(0, 50) + '...'
+          content: message.content.substring(0, 50) + '...',
+          participants: chat.participants.map(p => `${p.firstName} ${p.lastName} (${p._id})`)
         });
       } else {
         console.log('❌ Socket.IO instance not available');

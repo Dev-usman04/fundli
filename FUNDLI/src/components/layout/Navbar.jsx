@@ -36,7 +36,10 @@ const Navbar = ({ onMenuClick }) => {
               <Menu className="h-6 w-6" />
             </button>
             
-            <Link to="/" className="flex items-center space-x-3">
+            <Link 
+              to={isAuthenticated ? getDashboardLink() : "/"} 
+              className="flex items-center space-x-3"
+            >
               <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-accent-500 rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-xl">F</span>
               </div>

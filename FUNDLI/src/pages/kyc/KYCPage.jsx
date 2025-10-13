@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, CheckCircle, XCircle, AlertTriangle, User, FileText } from 'lucide-react';
+import { Shield, CheckCircle, XCircle, AlertTriangle, User, FileText, Camera } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { buildApiUrl } from '../../utils/config';
 import KYCFacialVerification from '../../components/kyc/KYCFacialVerification';
+import CameraTest from '../../components/kyc/CameraTest';
 
 const KYCPage = () => {
   const { user, updateUser } = useAuth();
   const [kycStatus, setKycStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showFacialVerification, setShowFacialVerification] = useState(false);
+  const [showCameraTest, setShowCameraTest] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -56,6 +58,14 @@ const KYCPage = () => {
 
   const handleCancelVerification = () => {
     setShowFacialVerification(false);
+  };
+
+  const handleStartCameraTest = () => {
+    setShowCameraTest(true);
+  };
+
+  const handleCancelCameraTest = () => {
+    setShowCameraTest(false);
   };
 
   const getStatusIcon = (status) => {
@@ -111,6 +121,22 @@ const KYCPage = () => {
         onComplete={handleVerificationComplete}
         onCancel={handleCancelVerification}
       />
+    );
+  }
+
+  if (showCameraTest) {
+    return (
+      <div>
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <button
+            onClick={handleCancelCameraTest}
+            className="mb-4 px-4 py-2 border border-neutral-300 dark:border-neutral-600 text-neutral-700 dark:text-neutral-300 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+          >
+            ← Back to KYC
+          </button>
+        </div>
+        <CameraTest />
+      </div>
     );
   }
 
@@ -188,7 +214,7 @@ const KYCPage = () => {
                 <span className="font-medium">Identity verification failed</span>
               </div>
               <div className="text-sm text-neutral-600 dark:text-neutral-400">
-                Similarity score: {kycStatus.verificationScore}% (minimum required: 85%)
+                Similarity score: {kycStatus.verificationScore}% (minimum required: 70%)
               </div>
             </div>
           )}
@@ -255,7 +281,7 @@ const KYCPage = () => {
                 <div className="flex justify-between">
                   <span className="text-neutral-600 dark:text-neutral-400">Similarity Score:</span>
                   <span className={`font-semibold ${
-                    kycStatus.verificationScore >= 85 
+                    kycStatus.verificationScore >= 70 
                       ? 'text-success-600' 
                       : 'text-error-600'
                   }`}>
@@ -288,13 +314,23 @@ const KYCPage = () => {
         {/* Action Buttons */}
         <div className="flex justify-center space-x-4">
           {kycStatus?.kycStatus !== 'verified' && (
-            <button
-              onClick={handleStartVerification}
-              className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center"
-            >
-              <Shield className="h-5 w-5 mr-2" />
-              {kycStatus?.kycStatus === 'failed' ? 'Retry Verification' : 'Start Verification'}
-            </button>
+            <>
+              <button
+                onClick={handleStartVerification}
+                className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center"
+              >
+                <Shield className="h-5 w-5 mr-2" />
+                {kycStatus?.kycStatus === 'failed' ? 'Retry Verification' : 'Start Verification'}
+              </button>
+              
+              <button
+                onClick={handleStartCameraTest}
+                className="px-6 py-3 border border-neutral-300 dark:border-neutral-600 text-neutral-700 dark:text-neutral-300 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors flex items-center"
+              >
+                <Camera className="h-5 w-5 mr-2" />
+                Test Camera
+              </button>
+            </>
           )}
           
           {kycStatus?.kycStatus === 'verified' && (
@@ -316,7 +352,7 @@ const KYCPage = () => {
             <p>• Upload a clear photo of your government-issued ID (passport, national ID, or driver's license)</p>
             <p>• Capture a live selfie using your device camera</p>
             <p>• Our AI system will compare your document photo with your live capture</p>
-            <p>• A similarity score of 85% or higher is required for verification</p>
+            <p>• A similarity score of 70% or higher is required for verification</p>
             <p>• Your data is encrypted and stored securely</p>
           </div>
         </div>

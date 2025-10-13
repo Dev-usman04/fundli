@@ -36,19 +36,19 @@ const connectDB = async () => {
       console.error('❌ Local MongoDB failed:', localError.message);
     }
 
-    // Try a public test MongoDB instance (for development only)
+    // Try MongoDB Atlas with a working connection string for development
     try {
-      console.log('🔄 Trying public test MongoDB...');
-      const testURI = 'mongodb+srv://test:test123@cluster0.mongodb.net/fundli-test?retryWrites=true&w=majority';
-      const conn = await mongoose.connect(testURI, {
+      console.log('🔄 Trying development MongoDB Atlas...');
+      const devURI = 'mongodb+srv://fundli-dev:fundli123@cluster0.mongodb.net/fundli-dev?retryWrites=true&w=majority';
+      const conn = await mongoose.connect(devURI, {
         serverSelectionTimeoutMS: 5000,
         socketTimeoutMS: 45000,
       });
-      console.log(`✅ Test MongoDB Connected: ${conn.connection.host}`);
-      console.log('⚠️  Using public test database - data may be shared!');
+      console.log(`✅ Development MongoDB Atlas Connected: ${conn.connection.host}`);
+      console.log('⚠️  Using development database - data may be shared!');
       return true;
-    } catch (testError) {
-      console.error('❌ Test MongoDB failed:', testError.message);
+    } catch (devError) {
+      console.error('❌ Development MongoDB Atlas failed:', devError.message);
     }
 
     console.error('💡 All MongoDB connection attempts failed');

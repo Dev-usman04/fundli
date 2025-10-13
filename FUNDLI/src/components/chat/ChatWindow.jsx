@@ -43,13 +43,79 @@ const ChatWindow = ({ chat, onBack, currentUser }) => {
     if (chat) {
       loadMessages();
       initializeWebRTC();
+      
+      // Initialize Socket.IO connection for chat
+      const token = localStorage.getItem('accessToken');
+      if (token && currentUser) {
+        chatSocketService.initialize(currentUser.id || currentUser._id, token);
+        
+        // Set up callbacks for real-time messaging
+        chatSocketService.setCallbacks({
+          onNewMessage: (data) => {
+            console.log('📨 New message received in ChatWindow:', data);
+            if (data.chatId === chat._id) {
+              setMessages(prev => {
+                // Enhanced duplicate detection - check multiple fields
+                const messageExists = prev.some(msg => {
+                  // Check by message ID
+                  if (msg._id && data.message._id && msg._id === data.message._id) return true;
+                  if (msg.id && data.message.id && msg.id === data.message.id) return true;
+                  
+                  // Check by content and timestamp (fallback)
+                  if (msg.content === data.message.content && 
+                      msg.sender && data.message.sender &&
+                      msg.sender._id === data.message.sender._id &&
+                      Math.abs(new Date(msg.createdAt) - new Date(data.message.createdAt)) < 1000) {
+                    return true;
+                  }
+                  
+                  return false;
+                });
+                
+                if (messageExists) {
+                  console.log('📨 Message already exists, skipping duplicate');
+                  return prev;
+                }
+                
+                console.log('📨 Adding new message to chat');
+                return [...prev, data.message];
+              });
+              
+              // Scroll to bottom when new message arrives
+              setTimeout(() => {
+                if (messagesEndRef.current) {
+                  messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+                }
+              }, 100);
+            }
+          },
+          onConnectionReady: () => {
+            console.log('🔌 Chat Socket.IO connection ready');
+            // Join the chat room once connection is ready
+            chatSocketService.joinChat(chat._id);
+          },
+          onConnectionLost: () => {
+            console.log('🔌 Chat Socket.IO connection lost');
+          },
+          onError: (error) => {
+            console.error('❌ Chat Socket.IO error:', error);
+          }
+        });
+      }
     }
-  }, [chat]);
+    
+    // Cleanup on unmount
+    return () => {
+      if (chat) {
+        chatSocketService.leaveChat(chat._id);
+      }
+    };
+  }, [chat, currentUser]);
 
   const initializeWebRTC = () => {
     const token = localStorage.getItem('accessToken');
     webrtcService.initialize(currentUser.id, token);
-    chatSocketService.initialize(currentUser.id, token);
+    // chatSocketService.initialize is now called in useEffect above
     
     webrtcService.setCallbacks({
       onIncomingCall: (callData) => {
@@ -142,11 +208,22 @@ const ChatWindow = ({ chat, onBack, currentUser }) => {
             console.log('📨 New message received via Socket.IO:', data);
             if (data.chatId === chat._id) {
               setMessages(prev => {
-                // Check if message already exists to prevent duplicates
-                const messageExists = prev.some(msg => 
-                  (msg._id && data.message._id && msg._id === data.message._id) ||
-                  (msg.id && data.message.id && msg.id === data.message.id)
-                );
+                // Enhanced duplicate detection - check multiple fields
+                const messageExists = prev.some(msg => {
+                  // Check by message ID
+                  if (msg._id && data.message._id && msg._id === data.message._id) return true;
+                  if (msg.id && data.message.id && msg.id === data.message.id) return true;
+                  
+                  // Check by content and timestamp (fallback)
+                  if (msg.content === data.message.content && 
+                      msg.sender && data.message.sender &&
+                      msg.sender._id === data.message.sender._id &&
+                      Math.abs(new Date(msg.createdAt) - new Date(data.message.createdAt)) < 1000) {
+                    return true;
+                  }
+                  
+                  return false;
+                });
                 
                 if (messageExists) {
                   console.log('📨 Message already exists, skipping duplicate');
@@ -214,7 +291,8 @@ const ChatWindow = ({ chat, onBack, currentUser }) => {
       if (response.ok) {
         const data = await response.json();
         console.log('✅ Message sent successfully:', data.data.message);
-        setMessages(prev => [...prev, data.data.message]);
+        // Don't add message here - let Socket.IO broadcast handle it to avoid duplicates
+        // The message will be added when we receive the Socket.IO broadcast
         setNewMessage('');
         setReplyTo(null);
       } else {
@@ -521,33 +599,18 @@ const ChatWindow = ({ chat, onBack, currentUser }) => {
               isOwn = true;
             }
             
-            // FORCE ALTERNATING ALIGNMENT FOR TESTING - This will make messages alternate sides
-            isOwn = index % 2 === 0; // Even indices = own (right), odd indices = received (left)
+            // Proper sender detection - use the actual sender ID comparison
+            // isOwn is already correctly determined above based on sender ID
             const isReply = message.replyTo;
             
-            // Debug logging
-            console.log('🔍 Message alignment check:', {
-              messageIndex: index,
+            // Debug logging (simplified)
+            console.log('🔍 Message alignment:', {
               senderId: senderId,
               userId: userId,
               isOwn: isOwn,
               senderName: message.sender?.firstName,
               currentUserName: currentUser?.firstName,
-              senderEmail: message.sender?.email,
-              currentUserEmail: currentUser?.email,
-              alignment: isOwn ? 'RIGHT (own message)' : 'LEFT (received message)',
-              messageContent: message.content.substring(0, 30) + '...',
-              senderUserType: message.sender?.userType,
-              currentUserType: currentUser?.userType,
-              senderIdType: typeof senderId,
-              userIdType: typeof userId,
-              senderIdString: senderId?.toString(),
-              userIdString: userId?.toString(),
-              idMatch: senderIdStr === userIdStr,
-              nameMatch: message.sender?.firstName === currentUser?.firstName,
-              emailMatch: message.sender?.email === currentUser?.email,
-              currentUserFull: currentUser,
-              messageSenderFull: message.sender
+              alignment: isOwn ? 'RIGHT (own message)' : 'LEFT (received message)'
             });
             
             return (
@@ -572,14 +635,15 @@ const ChatWindow = ({ chat, onBack, currentUser }) => {
                   {/* Sender name for received messages */}
                   {!isOwn && (
                     <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">
-                      {message.sender.firstName} {message.sender.lastName}
+                      {message.sender?.firstName} {message.sender?.lastName}
+                      {message.sender?.userType && (
+                        <span className="ml-1 text-xs px-1 py-0.5 rounded bg-neutral-200 dark:bg-neutral-600 text-neutral-600 dark:text-neutral-300">
+                          {message.sender.userType}
+                        </span>
+                      )}
                     </p>
                   )}
                   
-                  {/* Visual indicator for testing */}
-                  <div className="text-xs font-bold mb-1">
-                    {isOwn ? '🔵 RIGHT SIDE (OWN)' : '🔴 LEFT SIDE (RECEIVED)'} - Message {index + 1}
-                  </div>
                   
                   <p className="text-sm">{message.content}</p>
                   
@@ -629,11 +693,16 @@ const ChatWindow = ({ chat, onBack, currentUser }) => {
                     </div>
                   )}
                   
-                  <p className={`text-xs mt-1 ${
+                  <div className={`flex items-center justify-between text-xs mt-1 ${
                     isOwn ? 'text-primary-100' : 'text-neutral-500 dark:text-neutral-400'
                   }`}>
-                    {formatTime(message.createdAt)}
-                  </p>
+                    <span>{formatTime(message.createdAt)}</span>
+                    {isOwn && (
+                      <span className="text-xs opacity-75">
+                        {message.status === 'read' ? '✓✓' : message.status === 'delivered' ? '✓' : '⏱️'}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             );

@@ -6,35 +6,75 @@ import BadgeNotification from './BadgeNotification';
 const NotificationManager = ({ notifications = [], onMarkAsRead, onRemove }) => {
   const [visibleNotifications, setVisibleNotifications] = useState([]);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [autoDismissTimers, setAutoDismissTimers] = useState(new Map());
 
   useEffect(() => {
     // Filter for unread notifications and show them
     const unreadNotifications = notifications.filter(notif => !notif.readAt);
     setVisibleNotifications(unreadNotifications.slice(0, 3)); // Show max 3 notifications
     
-    // Auto-dismiss notifications after 8 seconds
-    if (unreadNotifications.length > 0) {
+    // Clear existing timers
+    autoDismissTimers.forEach(timer => clearTimeout(timer));
+    const newTimers = new Map();
+    
+    // Auto-dismiss notifications after 5 seconds by marking as read (not removing)
+    unreadNotifications.slice(0, 3).forEach((notification) => {
       const timer = setTimeout(() => {
-        const oldestNotification = unreadNotifications[0];
-        if (oldestNotification) {
-          handleRemove(oldestNotification._id);
-        }
-      }, 8000);
+        handleMarkAsRead(notification._id);
+        // Remove from visible notifications after a short delay for smooth animation
+        setTimeout(() => {
+          setVisibleNotifications(prev => prev.filter(n => n._id !== notification._id));
+        }, 300);
+      }, 5000);
       
-      return () => clearTimeout(timer);
-    }
+      newTimers.set(notification._id, timer);
+    });
+    
+    setAutoDismissTimers(newTimers);
+    
+    return () => {
+      newTimers.forEach(timer => clearTimeout(timer));
+    };
   }, [notifications]);
 
   const handleMarkAsRead = (notificationId) => {
+    // Clear the timer for this notification
+    const timer = autoDismissTimers.get(notificationId);
+    if (timer) {
+      clearTimeout(timer);
+      setAutoDismissTimers(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(notificationId);
+        return newMap;
+      });
+    }
+    
     if (onMarkAsRead) {
       onMarkAsRead(notificationId);
     }
+    
+    // Remove from visible notifications
+    setVisibleNotifications(prev => prev.filter(n => n._id !== notificationId));
   };
 
   const handleRemove = (notificationId) => {
+    // Clear the timer for this notification
+    const timer = autoDismissTimers.get(notificationId);
+    if (timer) {
+      clearTimeout(timer);
+      setAutoDismissTimers(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(notificationId);
+        return newMap;
+      });
+    }
+    
     if (onRemove) {
       onRemove(notificationId);
     }
+    
+    // Remove from visible notifications
+    setVisibleNotifications(prev => prev.filter(n => n._id !== notificationId));
   };
 
   const getNotificationIcon = (type) => {
@@ -221,7 +261,7 @@ const NotificationManager = ({ notifications = [], onMarkAsRead, onRemove }) => 
                   className="h-full bg-gradient-to-r from-primary-500 to-accent-500"
                   initial={{ width: "100%" }}
                   animate={{ width: "0%" }}
-                  transition={{ duration: 8, ease: "linear" }}
+                  transition={{ duration: 5, ease: "linear" }}
                 />
               </div>
             </motion.div>

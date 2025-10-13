@@ -65,10 +65,11 @@ const Register = () => {
       return;
     }
 
-    // Phone number validation - ensure it's a valid format
-    const phoneRegex = /^\+?[1-9]\d{1,14}₦/;
-    if (!phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
-      setError('Please enter a valid phone number');
+    // Phone number validation - accept both +234 and 0 formats for Nigeria
+    const cleanPhone = formData.phone.replace(/\s/g, '');
+    const phoneRegex = /^(\+234|0)?[789][01]\d{8}$/;
+    if (!phoneRegex.test(cleanPhone)) {
+      setError('Please enter a valid Nigerian phone number (e.g., +2349033295837 or 09033295837)');
       setIsLoading(false);
       return;
     }
@@ -277,7 +278,7 @@ const Register = () => {
                   />
                 </div>
                 <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-300">
-                  Format: +1234567890 or 1234567890 (numbers only)
+                  Format: +2349033295837 or 09033295837 (Nigerian numbers)
                 </p>
               </motion.div>
 

@@ -38,11 +38,15 @@ class ChatSocketService {
           // Join user to their personal room
           socket.join(`user_${socket.userId}`);
           
-          console.log(`👤 User ${user.firstName} ${user.lastName} (${user.userType}) joined chat room: user_${socket.userId}`);
+          // Also join a general room for all users of the same type (borrower/lender)
+          socket.join(`userType_${user.userType}`);
+          
+          console.log(`👤 User ${user.firstName} ${user.lastName} (${user.userType}) joined chat rooms: user_${socket.userId}, userType_${user.userType}`);
           
           socket.emit('joined', {
             message: 'Successfully joined chat',
-            user: user
+            user: user,
+            rooms: [`user_${socket.userId}`, `userType_${user.userType}`]
           });
 
         } catch (error) {
@@ -185,12 +189,24 @@ class ChatSocketService {
   }
 
   // Method to broadcast a message to all participants in a chat
-  broadcastMessage(chatId, message) {
+  broadcastMessage(chatId, message, participants = []) {
+    // Broadcast to the specific chat room
     this.io.to(`chat_${chatId}`).emit('new_message', {
       chatId: chatId,
       message: message
     });
     console.log(`📢 Message broadcasted to chat ${chatId}`);
+    
+    // Also broadcast to individual user rooms to ensure delivery
+    if (participants.length > 0) {
+      participants.forEach(participant => {
+        this.io.to(`user_${participant._id}`).emit('new_message', {
+          chatId: chatId,
+          message: message
+        });
+        console.log(`📢 Message also sent to user room: user_${participant._id}`);
+      });
+    }
   }
 
   // Method to broadcast typing indicator
