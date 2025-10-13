@@ -167,11 +167,11 @@ const AdminLoanManagement = () => {
       const token = localStorage.getItem('accessToken');
       
       const endpoint = action === 'approve' 
-        ? buildApiUrl(`/admin/loan/${selectedApplication?.id}/approve`)
+        ? buildApiUrl(`/admin/loans/${selectedApplication?.id}/approve`)
         : buildApiUrl(`/admin/loans/${selectedApplication?.id}/reject`);
       
       const response = await fetch(endpoint, {
-        method: action === 'approve' ? 'POST' : 'PUT',
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -224,11 +224,14 @@ const AdminLoanManagement = () => {
     }
   };
 
-  const filteredApplications = loanApplications.filter(app => 
-    (app.borrower?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-    (app.purpose?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-    (app.id?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-  );
+  const filteredApplications = loanApplications.filter(app => {
+    const matchesSearch =
+      (app.borrower?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (app.purpose?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (app.id?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' ? true : app.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   if (isLoading) {
     return (

@@ -41,9 +41,9 @@ const KYCManagement = () => {
       const all = Array.isArray(allKYC) ? allKYC : [];
       
       // Count by status from all KYC data (this is the source of truth)
-      const pendingCount = all.filter(s => s.kycStatus === 'pending').length;
-      const approvedCount = all.filter(s => s.kycStatus === 'approved').length;
-      const rejectedCount = all.filter(s => s.kycStatus === 'rejected').length;
+      const pendingCount = all.filter(s => (s.kycStatus === 'pending' || s.kycStatus === 'in_review')).length;
+      const approvedCount = all.filter(s => (s.kycStatus === 'approved' || s.kycStatus === 'verified')).length;
+      const rejectedCount = all.filter(s => (s.kycStatus === 'rejected' || s.kycStatus === 'failed')).length;
       const total = all.length;
       
       // Update statistics
@@ -83,7 +83,7 @@ const KYCManagement = () => {
     const matchesSearch = `${kyc.firstName} ${kyc.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          kyc.email.toLowerCase().includes(searchTerm.toLowerCase());
     // For approved tab, only show items with 'approved' status
-    const matchesStatus = kyc.kycStatus === 'approved';
+    const matchesStatus = (kyc.kycStatus === 'approved' || kyc.kycStatus === 'verified');
     return matchesSearch && matchesStatus;
   });
 
@@ -187,8 +187,8 @@ const KYCManagement = () => {
       if (response.ok) {
         const result = await response.json();
         
-        // Filter to ensure only approved status items are included
-        const approvedOnly = (result.data || []).filter(item => item.kycStatus === 'approved');
+        // Filter to ensure only approved/verified status items are included
+        const approvedOnly = (result.data || []).filter(item => (item.kycStatus === 'approved' || item.kycStatus === 'verified'));
         
         setApprovedKYC(approvedOnly);
         

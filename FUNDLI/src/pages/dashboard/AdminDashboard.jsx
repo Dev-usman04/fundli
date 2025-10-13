@@ -69,6 +69,7 @@ const AdminDashboard = () => {
           setStats({
             totalUsers: data.users.total,
             pendingKYC: data.users.pendingKYC,
+            approvedKYC: data.users.approvedKYC,
             pendingLoans: data.loans.pending,
             totalTransactions: data.loans.total + data.pools.total
           });
@@ -286,10 +287,10 @@ const AdminDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-                    Pending KYC
+                    Approved KYC
                   </p>
                   <p className="text-2xl font-bold text-secondary-900 dark:text-white">
-                    {stats.pendingKYC}
+                    {stats.approvedKYC ?? 0}
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-warning/20 dark:bg-warning/20 rounded-lg flex items-center justify-center">
