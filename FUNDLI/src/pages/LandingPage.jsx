@@ -114,49 +114,47 @@ const LandingPage = () => {
 
   const faqs = [
     {
-      question: 'How does Fundli ensure security?',
-      answer: 'We use advanced encryption, KYC verification, and secure transaction processing to protect all user data and funds.'
+      question: 'What is peer-to-peer lending?',
+      answer: 'Peer-to-peer lending connects borrowers directly with individual lenders, eliminating traditional banks as intermediaries. This allows for better rates for borrowers and higher returns for lenders.'
     },
     {
-      question: 'What are the fees?',
-      answer: 'Our fees are transparent and lower than traditional banks. We charge a small percentage only on successful transactions.'
+      question: 'How does Fundli ensure security?',
+      answer: 'We use advanced encryption, comprehensive KYC verification, secure transaction processing, and bank-level security measures to protect all user data and funds.'
+    },
+    {
+      question: 'What is KYC verification?',
+      answer: 'Know Your Customer (KYC) verification is a process where we verify your identity using government-issued documents and facial recognition to ensure platform security and compliance.'
     },
     {
       question: 'How quickly can I get a loan?',
-      answer: 'Most loan applications are approved within 24-48 hours, with funds transferred within 1-3 business days.'
+      answer: 'After completing KYC verification, most loan applications are reviewed within 24-48 hours. Once approved, funds are typically available within 1-3 business days.'
     },
     {
-      question: 'Is my money safe?',
-      answer: 'Yes, we use bank-level security measures and all transactions are insured and monitored 24/7.'
+      question: 'What are the requirements to become a lender?',
+      answer: 'To become a lender, you need to complete KYC verification, have sufficient funds in your wallet, and understand the risks involved in peer-to-peer lending.'
+    },
+    {
+      question: 'How do lending pools work?',
+      answer: 'Lending pools allow multiple lenders to collectively fund a loan, spreading risk and enabling larger loan amounts. Lenders can join existing pools or create their own.'
+    },
+    {
+      question: 'What happens if a borrower defaults?',
+      answer: 'We have a comprehensive risk assessment system and collateral verification process. In case of default, we work with borrowers on repayment plans and may use collateral to recover funds.'
+    },
+    {
+      question: 'Can I withdraw my investment early?',
+      answer: 'Investments are typically locked for the loan duration. However, you may be able to sell your investment to other lenders through our secondary market, subject to availability.'
+    },
+    {
+      question: 'Is my money insured?',
+      answer: 'While we implement strict security measures, peer-to-peer lending carries inherent risks. We recommend diversifying your investments and only lending what you can afford to lose.'
+    },
+    {
+      question: 'How do I contact support?',
+      answer: 'You can reach our support team through the in-app chat feature, email, or phone. We also have a comprehensive help center with detailed guides and tutorials.'
     }
   ];
 
-  const pricingPlans = [
-    {
-      name: 'Borrower',
-      price: '2.5%',
-      period: 'per transaction',
-      features: ['Up to ₦50K loans', '24-48hr approval', 'Flexible terms', 'No hidden fees'],
-      color: 'from-primary-500 to-accent-500',
-      popular: false
-    },
-    {
-      name: 'Lender',
-      price: '1.5%',
-      period: 'per transaction',
-      features: ['Up to 15% returns', 'Risk assessment', 'Diversified portfolio', 'Auto-invest options'],
-      color: 'from-green-500 to-teal-600',
-      popular: true
-    },
-    {
-      name: 'Premium',
-      price: '1%',
-      period: 'per transaction',
-      features: ['Priority support', 'Higher limits', 'Advanced analytics', 'Custom terms'],
-      color: 'from-orange-500 to-red-600',
-      popular: false
-    }
-  ];
 
   // Animation variants
   const containerVariants = {
@@ -572,93 +570,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section className="py-16 sm:py-20 lg:py-24 bg-gradient-to-br from-white via-primary-50 to-accent-50 dark:from-secondary-800 dark:via-secondary-700 dark:to-secondary-800 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="text-center mb-12 sm:mb-16 lg:mb-20"
-          >
-            <motion.div variants={itemVariants}>
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-secondary-900 dark:text-secondary-100 mb-4 sm:mb-6 px-4">
-                Simple{' '}
-                <span className="text-gradient bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">
-                  Pricing
-                </span>
-              </h2>
-              <p className="text-lg sm:text-xl text-neutral-600 dark:text-neutral-400 max-w-3xl mx-auto leading-relaxed px-4">
-                Choose the plan that works best for you. No hidden fees, no surprises.
-              </p>
-            </motion.div>
-          </motion.div>
-
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8"
-          >
-            {pricingPlans.map((plan, index) => (
-              <motion.div
-                key={plan.name}
-                variants={itemVariants}
-                whileHover={{ y: -10, scale: 1.02 }}
-                className={`relative group ${plan.popular ? 'sm:-mt-4 lg:-mt-8' : ''}`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-2 sm:-top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-gradient-to-r from-primary-500 to-accent-500 text-white px-3 py-1 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold">
-                      Most Popular
-                    </span>
-                  </div>
-                )}
-                
-                <div className={`card p-6 sm:p-8 h-full bg-white/80 dark:bg-white/5 backdrop-blur-sm border-2 ${
-                  plan.popular 
-                    ? 'border-primary-500 dark:border-primary-400 shadow-2xl' 
-                    : 'border-neutral-200/50 dark:border-white/10'
-                }`}>
-                  <div className="text-center mb-6 sm:mb-8">
-                    <h3 className="text-xl sm:text-2xl font-bold text-secondary-900 dark:text-secondary-100 mb-2">
-                      {plan.name}
-                    </h3>
-                    <div className="flex items-baseline justify-center">
-                      <span className="text-3xl sm:text-4xl font-bold text-gradient">{plan.price}</span>
-                      <span className="text-sm sm:text-base text-neutral-600 dark:text-neutral-400 ml-2">{plan.period}</span>
-                    </div>
-                  </div>
-                  
-                  <ul className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
-                    {plan.features.map((feature, featureIndex) => (
-                      <li key={featureIndex} className="flex items-center">
-                        <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-success mr-2 sm:mr-3 flex-shrink-0" />
-                        <span className="text-sm sm:text-base text-neutral-600 dark:text-neutral-400">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  
-                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Link
-                      to="/register"
-                      className={`w-full py-3 px-6 rounded-xl font-semibold text-center transition-all duration-300 ${
-                        plan.popular
-                          ? 'btn-cta'
-                          : 'btn-secondary'
-                      }`}
-                    >
-                      Get Started
-                    </Link>
-                  </motion.div>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
 
       {/* FAQ Section */}
       <section className="py-16 sm:py-20 lg:py-24 bg-gradient-to-br from-neutral-100 via-white to-primary-50 dark:from-secondary-900 dark:via-secondary-800 dark:to-secondary-900 relative overflow-hidden">
